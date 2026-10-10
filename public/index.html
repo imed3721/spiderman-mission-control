@@ -12,7 +12,86 @@
   <title>Spider-Man Mission Control | Dashboard</title>
 
   <link rel="stylesheet" href="/style.css">
+
+  <script>
+    document.addEventListener("DOMContentLoaded", loadMissions);
+
+    async function loadMissions() {
+      const container = document.getElementById("missions-container");
+
+      try {
+        container.textContent = "Loading missions...";
+
+        const response = await fetch("/api/missions");
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        const missions = await response.json();
+
+        if (!Array.isArray(missions) || missions.length === 0) {
+          container.textContent = "No missions found. The neighbourhood is quiet!";
+          return;
+        }
+
+        const grid = document.createElement("div");
+        grid.className = "missions-grid";
+
+        missions.forEach((mission) => {
+          const card = document.createElement("article");
+          card.className = "mission-card";
+
+          const heading = document.createElement("h3");
+          heading.textContent = mission.name;
+
+          const location = document.createElement("p");
+          location.textContent = `📍 Location: ${mission.location}`;
+
+          const status = document.createElement("p");
+          status.textContent = `Status: ${mission.status}`;
+
+          const priority = document.createElement("p");
+          priority.textContent = `Priority: ${mission.priority}`;
+
+          const statusBadge = document.createElement("span");
+          statusBadge.className =
+            "mission-status status-" +
+            String(mission.status || "unknown").toLowerCase();
+          statusBadge.textContent = mission.status || "UNKNOWN";
+
+          const priorityBadge = document.createElement("span");
+          priorityBadge.className =
+            "mission-priority priority-" +
+            String(mission.priority || "unknown").toLowerCase();
+          priorityBadge.textContent =
+            `${mission.priority || "UNKNOWN"} PRIORITY`;
+
+          card.append(
+            heading,
+            location,
+            status,
+            priority,
+            statusBadge,
+            document.createTextNode(" "),
+            priorityBadge
+          );
+
+          grid.appendChild(card);
+        });
+
+        container.replaceChildren(grid);
+
+      } catch (error) {
+        console.error("Failed to load missions:", error);
+
+        container.textContent =
+          "Mission data is temporarily unavailable. Please refresh the page and try again.";
+      }
+    }
+  </script>
 </head>
+
 <body>
   <header class="site-header">
     <div class="container">
@@ -29,13 +108,11 @@
       </p>
     </section>
 
-    <section
-      class="missions-section"
-      aria-labelledby="missions-heading"
-    >
-      <h2 id="missions-heading">Active Missions</h2>
+    <section class="missions-section" aria-labelledby="missions-heading">
+      <h2 id="missions-heading">Mission Board</h2>
+      <p>Live mission data retrieved from the Spider-Man database.</p>
 
-      <div id="missions-container" aria-live="polite">
+      <div id="missions-container" aria-live="polite" aria-busy="true">
         <p>Loading missions...</p>
       </div>
     </section>
