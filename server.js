@@ -6,6 +6,10 @@ const {
 } = require("@aws-sdk/client-ssm");
 const { Pool } = require("pg");
 
+// ==========================
+// Application Configuration
+// ==========================
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const AWS_REGION = process.env.AWS_REGION || "eu-west-2";
@@ -16,12 +20,20 @@ let server;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// ==========================
+// AWS Systems Manager Parameters
+// ==========================
+
 const REQUIRED_PARAMETERS = [
-  "/spider-peter/db/host",
-  "/spider-peter/db/name",
-  "/spider-peter/db/user",
-  "/spider-peter/db/password",
+  "/spiderman/db/host",
+  "/spiderman/db/name",
+  "/spiderman/db/user",
+  "/spiderman/db/password",
 ];
+
+// ==========================
+// Database Configuration
+// ==========================
 
 async function loadDatabaseConfiguration() {
   const ssm = new SSMClient({ region: AWS_REGION });
@@ -52,10 +64,10 @@ async function loadDatabaseConfiguration() {
     }
 
     pool = new Pool({
-      host: parameters["/spider-peter/db/host"],
-      database: parameters["/spider-peter/db/name"],
-      user: parameters["/spider-peter/db/user"],
-      password: parameters["/spider-peter/db/password"],
+      host: parameters["/spiderman/db/host"],
+      database: parameters["/spiderman/db/name"],
+      user: parameters["/spiderman/db/user"],
+      password: parameters["/spiderman/db/password"],
       port: Number(process.env.DB_PORT) || 5432,
       ssl: {
         rejectUnauthorized: true,
@@ -63,10 +75,13 @@ async function loadDatabaseConfiguration() {
     });
 
     pool.on("error", (error) => {
-      console.error("Unexpected PostgreSQL pool error:", error.message);
+      console.error(
+        "Unexpected PostgreSQL pool error:",
+        error.message
+      );
     });
 
-    // Verify the database connection before starting the server.
+    // Confirm the database connection before starting the server.
     await pool.query("SELECT 1");
 
     console.log("Database connection established.");
@@ -75,12 +90,20 @@ async function loadDatabaseConfiguration() {
   }
 }
 
+// ==========================
+// Health Check
+// ==========================
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
-    service: "spider-peter-app",
+    service: "spiderman-mission-control",
   });
 });
+
+// ==========================
+// Readiness Check
+// ==========================
 
 app.get("/ready", async (req, res) => {
   if (!pool) {
@@ -98,7 +121,10 @@ app.get("/ready", async (req, res) => {
       database: "connected",
     });
   } catch (error) {
-    console.error("Database readiness check failed:", error.message);
+    console.error(
+      "Database readiness check failed:",
+      error.message
+    );
 
     return res.status(503).json({
       status: "not-ready",
@@ -106,6 +132,10 @@ app.get("/ready", async (req, res) => {
     });
   }
 });
+
+// ==========================
+// Missions API
+// ==========================
 
 app.get("/api/missions", async (req, res) => {
   if (!pool) {
@@ -123,7 +153,10 @@ app.get("/api/missions", async (req, res) => {
 
     return res.status(200).json(result.rows);
   } catch (error) {
-    console.error("Failed to retrieve missions:", error.message);
+    console.error(
+      "Failed to retrieve missions:",
+      error.message
+    );
 
     return res.status(500).json({
       error: "Unable to retrieve missions",
@@ -131,8 +164,14 @@ app.get("/api/missions", async (req, res) => {
   }
 });
 
+// ==========================
+// Graceful Shutdown
+// ==========================
+
 async function shutdown(signal) {
-  console.log(`${signal} received. Shutting down gracefully.`);
+  console.log(
+    `${signal} received. Shutting down gracefully.`
+  );
 
   if (server) {
     await new Promise((resolve, reject) => {
@@ -145,28 +184,43 @@ async function shutdown(signal) {
 
   if (pool) {
     await pool.end();
+    pool = undefined;
   }
 
   process.exit(0);
 }
+
+// ==========================
+// Start Application
+// ==========================
 
 async function start() {
   try {
     await loadDatabaseConfiguration();
 
     server = app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Spider-Peter App listening on port ${PORT}.`);
+      console.log(
+        `Spider-Man Mission Control listening on port ${PORT}.`
+      );
     });
   } catch (error) {
-    console.error("Application startup failed:", error.message);
+    console.error(
+      "Application startup failed:",
+      error.message
+    );
 
     if (pool) {
       await pool.end().catch(() => {});
+      pool = undefined;
     }
 
     process.exitCode = 1;
   }
 }
+
+// ==========================
+// Process Signal Handlers
+// ==========================
 
 process.on("SIGTERM", () => {
   shutdown("SIGTERM").catch((error) => {
