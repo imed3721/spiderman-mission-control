@@ -6,10 +6,12 @@
 
   <meta
     name="description"
-    content="Spider-Man Mission Control — a mission dashboard demonstrating a Node.js and AWS DevOps project."
+    content="Spider-Man Mission Control is a mission dashboard built with Node.js, Express, AWS, and PostgreSQL."
   >
 
-  <title>Spider-Man Mission Control | Dashboard</title>
+  <meta name="theme-color" content="#171923">
+
+  <title>Spider-Man Mission Control | DevOps Dashboard</title>
 
   <link rel="stylesheet" href="/style.css">
 
@@ -19,19 +21,34 @@
     async function loadMissions() {
       const container = document.getElementById("missions-container");
 
-      try {
-        container.textContent = "Loading missions...";
+      container.setAttribute("aria-busy", "true");
+      container.replaceChildren();
 
+      const loadingMessage = document.createElement("p");
+      loadingMessage.textContent = "Loading mission data...";
+      container.appendChild(loadingMessage);
+
+      try {
         const response = await fetch("/api/missions");
 
         if (!response.ok) {
-          throw new Error(`Server returned ${response.status}`);
+          throw new Error(`Request failed with status ${response.status}`);
         }
 
         const missions = await response.json();
 
-        if (!Array.isArray(missions) || missions.length === 0) {
-          container.textContent = "No missions found. The neighbourhood is quiet!";
+        if (!Array.isArray(missions)) {
+          throw new Error("Unexpected mission data format");
+        }
+
+        container.replaceChildren();
+
+        if (missions.length === 0) {
+          const emptyMessage = document.createElement("p");
+          emptyMessage.className = "empty-state";
+          emptyMessage.textContent =
+            "No missions found. The neighbourhood is quiet!";
+          container.appendChild(emptyMessage);
           return;
         }
 
@@ -43,50 +60,75 @@
           card.className = "mission-card";
 
           const heading = document.createElement("h3");
-          heading.textContent = mission.name;
+          heading.textContent = mission.name || "Untitled Mission";
 
           const location = document.createElement("p");
-          location.textContent = `📍 Location: ${mission.location}`;
+          location.className = "mission-location";
+          location.textContent =
+            `📍 Location: ${mission.location || "Unknown"}`;
 
-          const status = document.createElement("p");
-          status.textContent = `Status: ${mission.status}`;
+          const details = document.createElement("div");
+          details.className = "mission-details";
 
-          const priority = document.createElement("p");
-          priority.textContent = `Priority: ${mission.priority}`;
+          const statusLabel = document.createElement("p");
+          statusLabel.textContent = "Status";
 
           const statusBadge = document.createElement("span");
+          const statusValue = String(
+            mission.status || "UNKNOWN"
+          ).toUpperCase();
+
           statusBadge.className =
             "mission-status status-" +
-            String(mission.status || "unknown").toLowerCase();
-          statusBadge.textContent = mission.status || "UNKNOWN";
+            statusValue.toLowerCase();
+
+          statusBadge.textContent = statusValue;
+          statusLabel.appendChild(document.createTextNode(" "));
+          statusLabel.appendChild(statusBadge);
+
+          const priorityLabel = document.createElement("p");
+          priorityLabel.textContent = "Priority";
 
           const priorityBadge = document.createElement("span");
+          const priorityValue = String(
+            mission.priority || "UNKNOWN"
+          ).toUpperCase();
+
           priorityBadge.className =
             "mission-priority priority-" +
-            String(mission.priority || "unknown").toLowerCase();
-          priorityBadge.textContent =
-            `${mission.priority || "UNKNOWN"} PRIORITY`;
+            priorityValue.toLowerCase();
 
-          card.append(
-            heading,
-            location,
-            status,
-            priority,
-            statusBadge,
-            document.createTextNode(" "),
-            priorityBadge
-          );
+          priorityBadge.textContent = priorityValue;
+          priorityLabel.appendChild(document.createTextNode(" "));
+          priorityLabel.appendChild(priorityBadge);
 
+          details.append(statusLabel, priorityLabel);
+          card.append(heading, location, details);
           grid.appendChild(card);
         });
 
-        container.replaceChildren(grid);
+        container.appendChild(grid);
 
       } catch (error) {
         console.error("Failed to load missions:", error);
 
-        container.textContent =
-          "Mission data is temporarily unavailable. Please refresh the page and try again.";
+        container.replaceChildren();
+
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "error-state";
+        errorMessage.setAttribute("role", "alert");
+        errorMessage.textContent =
+          "Mission data is temporarily unavailable. Please try again.";
+
+        const retryButton = document.createElement("button");
+        retryButton.type = "button";
+        retryButton.textContent = "Retry";
+        retryButton.addEventListener("click", loadMissions);
+
+        container.append(errorMessage, retryButton);
+
+      } finally {
+        container.setAttribute("aria-busy", "false");
       }
     }
   </script>
@@ -95,33 +137,97 @@
 <body>
   <header class="site-header">
     <div class="container">
-      <h1>🕷️ Spider-Man Mission Control</h1>
-      <p>Friendly neighbourhood DevOps headquarters</p>
+      <p class="site-label">DEVOPS PORTFOLIO PROJECT</p>
+
+      <h1 class="site-title">
+        🕷️ Spider-Man Mission Control
+      </h1>
+
+      <p class="site-tagline">
+        Friendly neighbourhood DevOps headquarters
+      </p>
     </div>
   </header>
 
   <main class="container">
-    <section class="welcome-section" aria-labelledby="welcome-heading">
-      <h2 id="welcome-heading">Welcome to Mission Control</h2>
+    <section
+      class="welcome-section"
+      aria-labelledby="welcome-heading"
+    >
+      <p class="section-label">MISSION OPERATIONS</p>
+
+      <h2 id="welcome-heading">
+        Welcome to Mission Control
+      </h2>
+
       <p>
-        Monitor missions, track priorities, and keep the neighbourhood safe.
+        Monitor active missions, track priorities, and help keep
+        the neighbourhood safe.
       </p>
     </section>
 
-    <section class="missions-section" aria-labelledby="missions-heading">
-      <h2 id="missions-heading">Mission Board</h2>
-      <p>Live mission data retrieved from the Spider-Man database.</p>
+    <section
+      class="missions-section"
+      aria-labelledby="missions-heading"
+    >
+      <div class="section-heading">
+        <div>
+          <h2 id="missions-heading">Mission Board</h2>
+          <p>
+            Mission records retrieved from the PostgreSQL database
+            through the application API.
+          </p>
+        </div>
 
-      <div id="missions-container" aria-live="polite" aria-busy="true">
-        <p>Loading missions...</p>
+        <button
+          class="refresh-button"
+          type="button"
+          onclick="loadMissions()"
+        >
+          Refresh Missions
+        </button>
       </div>
+
+      <div
+        id="missions-container"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p>Loading mission data...</p>
+      </div>
+    </section>
+
+    <section
+      class="project-info"
+      aria-labelledby="architecture-heading"
+    >
+      <h2 id="architecture-heading">Powered by the Cloud</h2>
+
+      <p>
+        This project demonstrates a Node.js and Express application
+        deployed on AWS, with PostgreSQL for persistent storage.
+      </p>
+
+      <ul class="technology-list">
+        <li>Node.js</li>
+        <li>Express</li>
+        <li>AWS EC2</li>
+        <li>Application Load Balancer</li>
+        <li>Amazon RDS</li>
+        <li>Systems Manager</li>
+      </ul>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="container">
-      <p>Built with Node.js, Express, AWS, and PostgreSQL.</p>
-      <p>&copy; Spider-Man Mission Control — DevOps Portfolio Project</p>
+      <p>
+        Built with Node.js, Express, AWS, and PostgreSQL.
+      </p>
+
+      <p>
+        Spider-Man Mission Control · DevOps Portfolio Project
+      </p>
     </div>
   </footer>
 </body>
