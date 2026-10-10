@@ -1,0 +1,225 @@
+name: Spider-Man Mission Control CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spiderman-production-deployment
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    name: Test and Deploy to AWS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate application files
+        run: |
+          set -e
+
+          test -f package.json
+          test -f server.js
+          test -f init-db.js
+          test -f test.js
+          test -f public/index.html
+          test -f public/style.css
+
+          echo "All required application files exist."
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run application tests
+        run: npm test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          allowed-account-ids: "499689292130"
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Prepare deployment script
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          cat > deploy-remote.sh <<'REMOTE'
+          set -Eeuo pipefail
+
+          DEPLOY_SHA="__DEPLOY_SHA__"
+          REPOSITORY="__REPOSITORY__"
+          APP_DIR="/opt/spiderman"
+          RELEASE_DIR="/tmp/spiderman-deploy-${DEPLOY_SHA}"
+          BASE_URL="https://raw.githubusercontent.com/${REPOSITORY}/${DEPLOY_SHA}"
+
+          echo "Preparing deployment for commit ${DEPLOY_SHA}"
+
+          mkdir -p "${RELEASE_DIR}/public"
+
+          curl -fLsS --retry 3 \
+            "${BASE_URL}/package.json" \
+            -o "${RELEASE_DIR}/package.json"
+
+          curl -fLsS --retry 3 \
+            "${BASE_URL}/server.js" \
+            -o "${RELEASE_DIR}/server.js"
+
+          curl -fLsS --retry 3 \
+            "${BASE_URL}/init-db.js" \
+            -o "${RELEASE_DIR}/init-db.js"
+
+          curl -fLsS --retry 3 \
+            "${BASE_URL}/test.js" \
+            -o "${RELEASE_DIR}/test.js"
+
+          curl -fLsS --retry 3 \
+            "${BASE_URL}/public/index.html" \
+            -o "${RELEASE_DIR}/public/index.html"
+
+          curl -fLsS --retry 3 \
+            "${BASE_URL}/public/style.css" \
+            -o "${RELEASE_DIR}/public/style.css"
+
+          echo "All application files downloaded successfully."
+
+          test -s "${RELEASE_DIR}/package.json"
+          test -s "${RELEASE_DIR}/server.js"
+          test -s "${RELEASE_DIR}/public/index.html"
+          test -s "${RELEASE_DIR}/public/style.css"
+
+          mkdir -p "${APP_DIR}"
+          cp -a "${RELEASE_DIR}/." "${APP_DIR}/"
+
+          cd "${APP_DIR}"
+
+          echo "Installing production dependencies..."
+          npm install --omit=dev
+
+          echo "Restarting application service..."
+          systemctl restart spiderman.service
+
+          echo "Waiting for application readiness..."
+
+          for attempt in $(seq 1 15); do
+            if systemctl is-active --quiet spiderman.service \
+              && curl -fsS \
+                http://127.0.0.1:3000/ready \
+                -o /tmp/spiderman-ready.json; then
+
+              cat /tmp/spiderman-ready.json
+              echo
+              echo "Deployment completed successfully."
+              rm -rf "${RELEASE_DIR}"
+              exit 0
+            fi
+
+            echo "Readiness check ${attempt}/15 failed; retrying..."
+            sleep 4
+          done
+
+          echo "Deployment health check failed."
+          systemctl status spiderman.service --no-pager || true
+          journalctl -u spiderman.service -n 60 --no-pager || true
+          exit 1
+          REMOTE
+
+          sed -i \
+            "s/__DEPLOY_SHA__/${DEPLOY_SHA}/g; s#__REPOSITORY__#${REPOSITORY}#g" \
+            deploy-remote.sh
+
+      - name: Send deployment command to EC2
+        id: deploy
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          EC2_INSTANCE_ID: i-064b091f5e80d478a
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          jq -n --rawfile script deploy-remote.sh \
+            '{commands: [$script]}' > parameters.json
+
+          COMMAND_ID=$(aws ssm send-command \
+            --region "${AWS_REGION}" \
+            --instance-ids "${EC2_INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Spider-Man deployment ${DEPLOY_SHA}" \
+            --timeout-seconds 600 \
+            --parameters file://parameters.json \
+            --query 'Command.CommandId' \
+            --output text)
+
+          echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
+          echo "SSM command submitted: ${COMMAND_ID}"
+
+      - name: Wait for deployment and verify result
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          EC2_INSTANCE_ID: i-064b091f5e80d478a
+          COMMAND_ID: ${{ steps.deploy.outputs.command_id }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            STATUS=$(aws ssm get-command-invocation \
+              --region "${AWS_REGION}" \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${EC2_INSTANCE_ID}" \
+              --query 'Status' \
+              --output text 2>/dev/null || true)
+
+            echo "Deployment status: ${STATUS:-Pending} (${attempt}/30)"
+
+            case "${STATUS:-Pending}" in
+              Success)
+                echo "EC2 deployment succeeded."
+
+                aws ssm get-command-invocation \
+                  --region "${AWS_REGION}" \
+                  --command-id "${COMMAND_ID}" \
+                  --instance-id "${EC2_INSTANCE_ID}" \
+                  --query 'StandardOutputContent' \
+                  --output text
+
+                exit 0
+                ;;
+
+              Failed|TimedOut|Cancelled|Cancelling)
+                echo "EC2 deployment failed."
+
+                aws ssm get-command-invocation \
+                  --region "${AWS_REGION}" \
+                  --command-id "${COMMAND_ID}" \
+                  --instance-id "${EC2_INSTANCE_ID}" \
+                  --query '[StatusDetails,StandardErrorContent,StandardOutputContent]' \
+                  --output json || true
+
+                exit 1
+                ;;
+            esac
+
+            sleep 5
+          done
+
+          echo "Timed out waiting for the SSM deployment result."
+          exit 1
