@@ -89,6 +89,12 @@ relying on the CI/CD result.
 
 ## Documentation
 
-- [Source Code](https://github.com/imed3721/spiderman-mission-control)
-- [GitHub Actions — CI/CD Workflows](https://github.com/imed3721/spiderman-mission-control/actions)
-- [Project Documentation](./docs/)
+• [Source Code](https://github.com/imed3721/spiderman-mission-control)
+
+• [GitHub Actions — CI/CD Workflows](https://github.com/imed3721/spiderman-mission-control/actions)
+
+• [Project Documentation](./docs/)
+
+## What I learned
+
+This project strengthened my practical skills in AWS network segmentation, security group design, and managed database connectivity. I also gained hands-on experience with secure application configuration using AWS Systems Manager Parameter Store, automated deployments through GitHub Actions and Systems Manager Run Command, and implementing application health and readiness checks. Additionally, I developed my troubleshooting skills by analysing service logs, investigating database connectivity issues, and diagnosing application failures through load balancer target health.
