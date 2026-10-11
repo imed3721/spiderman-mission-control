@@ -35,7 +35,7 @@ Express) → Amazon RDS for PostgreSQL.
 
 **• Data Layer:** Amazon RDS for PostgreSQL is deployed in private subnets with public access disabled. Database access is restricted to traffic originating from the application EC2 security group.
 
-**• Configuration and Secrets Management:** Database connection settings are retrieved from AWS Systems Manager Parameter Store rather than hard-coded into the application. The database password is intended to be stored as a SecureString parameter.
+**• Configuration and Secrets Management:** Database connection settings are retrieved from AWS Systems Manager Parameter Store rather than hard-coded into the application. The database password is intended to be stored as a 'SecureString' parameter.
 
 **• CI/CD and Deployment:** GitHub Actions validates project files, installs dependencies, runs tests, invokes remote deployment commands through AWS Systems Manager Run Command, and checks application readiness after deployment.
 
