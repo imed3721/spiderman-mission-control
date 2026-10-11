@@ -50,21 +50,81 @@ The project guide describes these checks:
 
 • Application health via `/health`
 
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/4fe49a853284caee117249d937130d8af43e04e4/screenshots/Screenshot%202026-10-11%20at%2012.11.16.png)
+
 • Database readiness via `/ready`
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/4fe49a853284caee117249d937130d8af43e04e4/screenshots/Screenshot%202026-10-11%20at%2012.11.27.png)
 
 • Mission data via `/api/missions`
 
-• Application service status and logs
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/4fe49a853284caee117249d937130d8af43e04e4/screenshots/Screenshot%202026-10-11%20at%2012.11.36.png)
 
 • ALB target health when the application service is stopped
 
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.06.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.14.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.22.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.29.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.37.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.45.png)
+
 • Database-connection failure behaviour when the configured password is temporarily incorrect
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.15.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.23.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.45.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.52.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.58.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.14.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.21.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.34.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.41.png)
 
 • Auto Scaling Group replacement behaviour after terminating an instance
 
-*Add links or redacted screenshots of actual successful test runs here.
-Clearly label any test that has not yet been repeated on the current
-version*
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.42.38.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.43.14.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.43.30.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.43.37.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.08.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.30.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.39.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.49.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.56.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.45.06.png)
+
+• Application service status and logs
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.52.53.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.51.51.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.52.11.png)
+
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.52.17.png)
 
 ## Limitations and next improvements
 
