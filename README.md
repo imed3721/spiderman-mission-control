@@ -14,11 +14,33 @@ deployment automation, health checks, and failure testing.
 **Request path:** Internet → Application Load Balancer → EC2 (Node.js/
 Express) → Amazon RDS for PostgreSQL.
 
-The EC2 application retrieves database connection parameters from
-AWS Systems Manager Parameter Store using an EC2 IAM role. The
-database password should be stored as a SecureString.
+### Architecture Diagram
 
-*add Architecture diagram*
+![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1d1bf45b10341d012aec5318fe8cea47b646002/docs/Screenshot%202026-10-11%20at%2013.46.53.png)
+
+
+**How it works**
+
+1. **Internet → ALB:** The Application Load Balancer accepts incoming HTTP requests on port 80.
+2. **ALB → EC2:** The ALB forwards requests to the Node.js API running on port 3000.
+3. **EC2 → RDS:** The application connects to the PostgreSQL database on port 5432.
+4. **EC2 → Parameter Store:** The EC2 instance uses its IAM role to retrieve database configuration securely from AWS Systems Manager Parameter Store.
+5. **Password protection:** The database password should be stored as a `SecureString` parameter to protect it at rest. Access should be restricted through IAM permissions.
+
+## What this project demonstrates
+
+**• Networking:** A dedicated Amazon VPC with public and private subnets distributed across two Availability Zones. Security groups restrict application and database traffic based on source security groups, following the principle of least privilege.
+
+**• Traffic Routing:** An internet-facing Application Load Balancer (ALB) listens on HTTP port 80 and forwards incoming requests to the Node.js application running on EC2 on port 3000.
+
+**• Data Layer:** Amazon RDS for PostgreSQL is deployed in private subnets with public access disabled. Database access is restricted to traffic originating from the application EC2 security group.
+
+**• Configuration and Secrets Management:** Database connection settings are retrieved from AWS Systems Manager Parameter Store rather than hard-coded into the application. The database password is intended to be stored as a SecureString parameter.
+
+**• CI/CD and Deployment:** GitHub Actions validates project files, installs dependencies, runs tests, invokes remote deployment commands through AWS Systems Manager Run Command, and checks application readiness after deployment.
+
+**• Operations and Troubleshooting:** Application health and readiness endpoints, systemd service status, service logs, ALB target health, and CloudWatch monitoring support operational visibility and troubleshooting. Documented failure-injection exercises help validate application behaviour when dependencies fail.
+
 
 ## Technology
 **• AWS:** VPC, public/private subnets, Application Load Balancer, EC2, RDS PostgreSQL, IAM, Systems Manager Parameter Store, Systems Manager Session Manager, CloudWatch
@@ -152,8 +174,6 @@ relying on the CI/CD result.
 • [Source Code](https://github.com/imed3721/spiderman-mission-control)
 
 • [GitHub Actions — CI/CD Workflows](https://github.com/imed3721/spiderman-mission-control/actions)
-
-• [Project Documentation](./docs/)
 
 ## What I learned
 
