@@ -150,22 +150,25 @@ The project guide describes these checks:
 
 ## Limitations and next improvements
 
+### For cost consciousness
 • The documented RDS configuration is Single-AZ, so database
 Multi-AZ failover is not configured. 
-
-• The documented ALB listener uses HTTP; add HTTPS with an
-ACM certificate before presenting the app as production-ready.
-
-• The workflow currently uses long-lived AWS access keys stored in
-GitHub Actions secrets. A planned improvement is GitHub Actions
-OIDC with a narrowly scoped IAM role.
 
 • An Auto Scaling Group configured with minimum, desired, and
 maximum capacity of 1 demonstrates instance replacement, not
 load-based horizontal scaling.
 
+• The documented ALB listener uses HTTP. A planned improvement is to add HTTPS with an
+ACM certificate before presenting the app as production-ready.
+
+### My personal choice
+
+• The workflow currently uses long-lived AWS access keys stored in
+GitHub Actions secrets. A planned improvement is to use GitHub Actions
+OIDC with a narrowly scoped IAM role.
+
 • The current documentation and application/test code must use the
-same Systems Manager Parameter Store paths. Verify that
+same Systems Manager Parameter Store paths. A planned improvement is to verify that
 server.js, test.js, and the AWS parameters agree before
 relying on the CI/CD result.
 
