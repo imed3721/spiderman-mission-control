@@ -61,3 +61,34 @@ The project guide describes these checks:
 • Database-connection failure behaviour when the configured password is temporarily incorrect
 
 • Auto Scaling Group replacement behaviour after terminating an instance
+
+*Add links or redacted screenshots of actual successful test runs here.
+Clearly label any test that has not yet been repeated on the current
+version*
+
+## Limitations and next improvements
+
+• The documented RDS configuration is Single-AZ, so database
+Multi-AZ failover is not configured. 
+
+• The documented ALB listener uses HTTP; add HTTPS with an
+ACM certificate before presenting the app as production-ready.
+
+• The workflow currently uses long-lived AWS access keys stored in
+GitHub Actions secrets. A planned improvement is GitHub Actions
+OIDC with a narrowly scoped IAM role.
+
+• An Auto Scaling Group configured with minimum, desired, and
+maximum capacity of 1 demonstrates instance replacement, not
+load-based horizontal scaling.
+
+• The current documentation and application/test code must use the
+same Systems Manager Parameter Store paths. Verify that
+server.js, test.js, and the AWS parameters agree before
+relying on the CI/CD result.
+
+## Documentation
+
+- [Source Code](https://github.com/imed3721/spiderman-mission-control)
+- [GitHub Actions — CI/CD Workflows](https://github.com/imed3721/spiderman-mission-control/actions)
+- [Project Documentation](./docs/)
