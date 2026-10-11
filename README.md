@@ -50,7 +50,7 @@ Express) → Amazon RDS for PostgreSQL.
 **• Automation:** GitHub Actions, npm tests, AWS CLI, Systems Manager Run Command
 
 
-## Architecture and Deployment
+## Deployment Procedure
 
 • The Application Load Balancer (ALB) serves as the public entry point and forwards HTTP traffic to the Node.js application running on EC2 on port 3000.
 
