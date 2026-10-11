@@ -26,3 +26,38 @@ database password should be stored as a SecureString.
 **• Application:** Node.js, Express, PostgreSQL, HTML, CSS
 
 **• Automation:** GitHub Actions, npm tests, AWS CLI, Systems Manager Run Command
+
+
+## Architecture and Deployment
+
+• The Application Load Balancer (ALB) serves as the public entry point and forwards HTTP traffic to the Node.js application running on EC2 on port 3000.
+
+• The EC2 security group is configured to restrict application traffic to requests originating from the ALB security group.
+
+• The PostgreSQL RDS database is deployed in private subnets, with public access disabled and inbound database traffic restricted to the EC2 security group.
+
+• Database configuration and credentials are retrieved from AWS Systems Manager Parameter Store rather than hard-coded into the application.
+
+• The application provides `/health`, `/ready`, and `/api/missions` endpoints for health checks, database readiness checks, and mission data retrieval, respectively.
+
+• GitHub Actions validates project files, installs dependencies, runs tests, and uses AWS Systems Manager Run Command to execute remote deployment commands and verify application readiness.
+  
+• AWS Systems Manager Session Manager provides secure interactive access to the EC2 instance without requiring SSH access or inbound port 22.
+
+## Testing and operations
+
+The project guide describes these checks:
+
+• Application health via `/health`
+
+• Database readiness via `/ready`
+
+• Mission data via `/api/missions`
+
+• Application service status and logs
+
+• ALB target health when the application service is stopped
+
+• Database-connection failure behaviour when the configured password is temporarily incorrect
+
+• Auto Scaling Group replacement behaviour after terminating an instance
