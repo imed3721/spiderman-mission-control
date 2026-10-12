@@ -1,183 +1,305 @@
-# Spiderman Mission Control
+# Spider-Man Mission Control
 
-A learning project demonstrating how to deploy and operate a small
-Node.js task application using AWS infrastructure and a GitHub Actions
-delivery workflow.
+A learning project demonstrating how to deploy, operate, monitor, and troubleshoot a Node.js mission-management application on AWS using infrastructure services and an automated GitHub Actions delivery workflow.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [AWS Services and Design Decisions](#aws-services-and-design-decisions)
+- [Technology Stack](#technology-stack)
+- [Deployment Workflow](#deployment-workflow)
+- [Application Endpoints](#application-endpoints)
+- [Testing and Operational Evidence](#testing-and-operational-evidence)
+- [Security Considerations](#security-considerations)
+- [Limitations and Future Improvements](#limitations-and-future-improvements)
+- [What I Learned](#what-i-learned)
+- [Project Links](#project-links)
 
 ## Overview
-Spider-Man Mission Control is a simple mission/task-list application built
-to explore the DevOps work around a three-tier application: traffic
-routing, compute, database connectivity, configuration management,
-deployment automation, health checks, and failure testing.
+
+Spider-Man Mission Control is a simple mission/task-list application built to explore the operational responsibilities involved in running a cloud-hosted application.
+
+The project brings together networking, compute, database connectivity, secure configuration, deployment automation, health checks, service recovery, and failure testing.
+
+The goal is to demonstrate not only how to deploy an application, but also how to investigate problems and verify how the system behaves when components fail.
 
 ## Architecture
-**Request path:** Internet → Application Load Balancer → EC2 (Node.js/
-Express) → Amazon RDS for PostgreSQL.
 
-### Architecture Diagram
+### Request flow
+
+**Internet → Application Load Balancer → EC2 (Node.js/Express) → Amazon RDS for PostgreSQL**
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1d1bf45b10341d012aec5318fe8cea47b646002/docs/Screenshot%202026-10-11%20at%2013.46.53.png)
+![Spider-Man Mission Control architecture](docs/Screenshot%202026-10-11%20at%2013.46.53.png)
 
+### Architecture diagram
 
-**How it works**
+```mermaid
+flowchart TD
+    USER["User / Internet"]
 
-1. **Internet → ALB:** The Application Load Balancer accepts incoming HTTP requests on port 80.
-2. **ALB → EC2:** The ALB forwards requests to the Node.js API running on port 3000.
-3. **EC2 → RDS:** The application connects to the PostgreSQL database on port 5432.
-4. **EC2 → Parameter Store:** The EC2 instance uses its IAM role to retrieve database configuration securely from AWS Systems Manager Parameter Store.
-5. **Password protection:** The database password should be stored as a `SecureString` parameter to protect it at rest. Access should be restricted through IAM permissions.
+    subgraph AWS["AWS Cloud"]
+        subgraph VPC["Amazon VPC"]
+            subgraph PUBLIC["Public Subnets"]
+                ALB["Application Load Balancer"]
+            end
 
-## What this project demonstrates
+            subgraph PRIVATE_APP["Private Application Subnets"]
+                EC2["EC2 / Node.js and Express"]
+                SSM["Systems Manager Parameter Store"]
+            end
 
-**• Networking:** A dedicated Amazon VPC with public and private subnets distributed across two Availability Zones. Security groups restrict application and database traffic based on source security groups, following the principle of least privilege.
+            subgraph PRIVATE_DB["Private Database Subnets"]
+                RDS[("Amazon RDS for PostgreSQL")]
+            end
+        end
 
-**• Traffic Routing:** An internet-facing Application Load Balancer (ALB) listens on HTTP port 80 and forwards incoming requests to the Node.js application running on EC2 on port 3000.
+        CW["Amazon CloudWatch"]
+        IAM["IAM Roles and Policies"]
+        SSM_SESSION["Systems Manager Session Manager"]
+    end
 
-**• Data Layer:** Amazon RDS for PostgreSQL is deployed in private subnets with public access disabled. Database access is restricted to traffic originating from the application EC2 security group.
+    GH["GitHub Repository"]
+    ACTIONS["GitHub Actions"]
 
-**• Configuration and Secrets Management:** Database connection settings are retrieved from AWS Systems Manager Parameter Store rather than hard-coded into the application. The database password is intended to be stored as a 'SecureString' parameter.
+    USER --> ALB
+    ALB -->|"HTTP / application port 3000"| EC2
+    EC2 -->|"PostgreSQL / port 5432"| RDS
+    EC2 -->|"Retrieve configuration"| SSM
+    EC2 -.->|"Logs and monitoring, where configured"| CW
 
-**• CI/CD and Deployment:** GitHub Actions validates project files, installs dependencies, runs tests, invokes remote deployment commands through AWS Systems Manager Run Command, and checks application readiness after deployment.
+    IAM -.-> EC2
+    SSM_SESSION -.-> EC2
 
-**• Operations and Troubleshooting:** Application health and readiness endpoints, systemd service status, service logs, ALB target health, and CloudWatch monitoring support operational visibility and troubleshooting. Documented failure-injection exercises help validate application behaviour when dependencies fail.
+    GH --> ACTIONS
+    ACTIONS -->|"Deployment through SSM Run Command"| EC2
+```
 
+*The diagram represents the intended logical architecture. Validate subnet placement, monitoring configuration, and the exact deployment path against the resources currently running in AWS.*
 
-## Technology
-**• AWS:** VPC, public/private subnets, Application Load Balancer, EC2, RDS PostgreSQL, IAM, Systems Manager Parameter Store, Systems Manager Session Manager, CloudWatch
+### How it works
 
-**• Application:** Node.js, Express, PostgreSQL, HTML, CSS
+1. **Internet → ALB:** An internet-facing Application Load Balancer receives HTTP requests on port 80.
+2. **ALB → EC2:** The load balancer forwards requests to the Node.js/Express application listening on port 3000.
+3. **EC2 → RDS:** The application connects to the PostgreSQL database over port 5432.
+4. **EC2 → Parameter Store:** The application retrieves database configuration from AWS Systems Manager Parameter Store using its assigned IAM permissions.
+5. **GitHub Actions → EC2:** The CI/CD workflow invokes AWS Systems Manager Run Command to run deployment commands remotely.
+6. **Operations and recovery:** Application endpoints, service status, logs, and ALB target health provide evidence for troubleshooting and failure testing.
 
-**• Automation:** GitHub Actions, npm tests, AWS CLI, Systems Manager Run Command
+## AWS Services and Design Decisions
 
+| Service | Purpose |
+|---|---|
+| Amazon VPC | Provides an isolated network for the application infrastructure. |
+| Public and private subnets | Separate the public entry point from application and database resources. |
+| Application Load Balancer | Routes incoming HTTP requests to registered application targets. |
+| Amazon EC2 | Runs the Node.js/Express application. |
+| Amazon RDS for PostgreSQL | Provides managed relational database storage. |
+| AWS IAM | Controls permissions for AWS resources and automation. |
+| Systems Manager Parameter Store | Stores application configuration and database credentials separately from source code. |
+| Systems Manager Run Command | Executes remote deployment and operational commands without requiring SSH access. |
+| Systems Manager Session Manager | Provides interactive instance access without opening inbound SSH port 22. |
+| Amazon CloudWatch | Supports monitoring and log analysis when the relevant metrics and log collection are configured. |
+| GitHub Actions | Automates validation, testing, deployment, and post-deployment checks. |
 
-## Deployment Procedure
+## Technology Stack
 
-• The Application Load Balancer (ALB) serves as the public entry point and forwards HTTP traffic to the Node.js application running on EC2 on port 3000.
+- **Cloud infrastructure:** AWS VPC, EC2, Application Load Balancer, RDS PostgreSQL, IAM, Systems Manager, CloudWatch
+- **Application:** Node.js, Express, PostgreSQL, HTML, CSS
+- **Automation:** GitHub Actions, npm tests, AWS CLI, Systems Manager Run Command
+- **Operational checks:** HTTP health endpoints, service status, application logs, ALB target health, failure-injection tests
 
-• The EC2 security group is configured to restrict application traffic to requests originating from the ALB security group.
+## Deployment Workflow
 
-• The PostgreSQL RDS database is deployed in private subnets, with public access disabled and inbound database traffic restricted to the EC2 security group.
+The GitHub Actions workflow automates the application delivery process.
 
-• Database configuration and credentials are retrieved from AWS Systems Manager Parameter Store rather than hard-coded into the application.
+1. **Validate:** Check the required project files and workflow prerequisites.
+2. **Install dependencies:** Install the Node.js dependencies required by the application and tests.
+3. **Run tests:** Execute the configured automated tests.
+4. **Deploy remotely:** Use AWS Systems Manager Run Command to execute deployment commands on the EC2 instance.
+5. **Verify readiness:** Check the deployed application's readiness using the configured health or readiness endpoint.
 
-• The application provides `/health`, `/ready`, and `/api/missions` endpoints for health checks, database readiness checks, and mission data retrieval, respectively.
+### Infrastructure and deployment considerations
 
-• GitHub Actions validates project files, installs dependencies, runs tests, and uses AWS Systems Manager Run Command to execute remote deployment commands and verify application readiness.
-  
-• AWS Systems Manager Session Manager provides secure interactive access to the EC2 instance without requiring SSH access or inbound port 22.
+- The ALB acts as the public entry point and forwards traffic to the application on port 3000.
+- The EC2 security group should allow application traffic only from the ALB security group.
+- RDS should remain in private subnets with public access disabled.
+- Database inbound traffic should be restricted to the application security group on port 5432.
+- Application configuration and credentials should be retrieved from Parameter Store rather than hard-coded into the source code.
+- Systems Manager Session Manager provides interactive access without requiring an inbound SSH rule.
 
-## Testing and operations
+## Application Endpoints
 
-The project guide describes these checks:
+| Endpoint | Purpose |
+|---|---|
+| `/health` | Reports basic application health. |
+| `/ready` | Checks whether the application is ready to serve requests, including database connectivity where implemented. |
+| `/api/missions` | Returns mission data from the application API. |
 
-### • Application health via `/health`
+A successful `/health` response does not necessarily mean the database is available. The readiness endpoint should check the dependencies required for the application to operate correctly.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/4fe49a853284caee117249d937130d8af43e04e4/screenshots/Screenshot%202026-10-11%20at%2012.11.16.png)
+## Testing and Operational Evidence
 
-### • Database readiness via `/ready`
+The following evidence documents application behaviour, infrastructure recovery, and troubleshooting exercises. Expand each section to view the related screenshots.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/4fe49a853284caee117249d937130d8af43e04e4/screenshots/Screenshot%202026-10-11%20at%2012.11.27.png)
+### 1. Application health
 
-### • Mission data via `/api/missions`
+Verifies that the application responds to a health-check request.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/4fe49a853284caee117249d937130d8af43e04e4/screenshots/Screenshot%202026-10-11%20at%2012.11.36.png)
+![Application health endpoint](screenshots/Screenshot%202026-10-11%20at%2012.11.16.png)
 
-### • ALB target health when the application service is stopped
+### 2. Database readiness
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.06.png)
+Demonstrates the readiness endpoint and its database-dependency check.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.14.png)
+![Database readiness endpoint](screenshots/Screenshot%202026-10-11%20at%2012.11.27.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.22.png)
+### 3. Mission API
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.29.png)
+Demonstrates the mission-data API response.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.37.png)
+![Mission API response](screenshots/Screenshot%202026-10-11%20at%2012.11.36.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/e71482e8ed7c6c9cbb789c0af879ac0a45122799/screenshots/Screenshot%202026-10-11%20at%2012.23.45.png)
+### 4. ALB target health during an application failure
 
-### • Database-connection failure behaviour when the configured password is temporarily incorrect
+These screenshots document the load balancer's target-health behaviour when the application service is stopped.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.15.png)
+<details>
+<summary><strong>View ALB target health and recovery evidence</strong></summary>
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.23.png)
+![ALB target health test 1](screenshots/Screenshot%202026-10-11%20at%2012.23.06.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.45.png)
+![ALB target health test 2](screenshots/Screenshot%202026-10-11%20at%2012.23.14.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.52.png)
+![ALB target health test 3](screenshots/Screenshot%202026-10-11%20at%2012.23.22.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.31.58.png)
+![ALB target health test 4](screenshots/Screenshot%202026-10-11%20at%2012.23.29.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.14.png)
+![ALB target health test 5](screenshots/Screenshot%202026-10-11%20at%2012.23.37.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.21.png)
+![ALB target health test 6](screenshots/Screenshot%202026-10-11%20at%2012.23.45.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.34.png)
+</details>
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/42db404300168cc94e9b23c6cdce1d3154298c2b/screenshots/Screenshot%202026-10-11%20at%2012.32.41.png)
+### 5. Database connection failure
 
-### • Auto Scaling Group replacement behaviour after terminating an instance
+A controlled test temporarily uses an incorrect database password to investigate how the application responds when database authentication fails.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.42.38.png)
+<details>
+<summary><strong>View database failure and troubleshooting evidence</strong></summary>
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.43.14.png)
+![Database failure test 1](screenshots/Screenshot%202026-10-11%20at%2012.31.15.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.43.30.png)
+![Database failure test 2](screenshots/Screenshot%202026-10-11%20at%2012.31.23.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.43.37.png)
+![Database failure test 3](screenshots/Screenshot%202026-10-11%20at%2012.31.45.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.08.png)
+![Database failure test 4](screenshots/Screenshot%202026-10-11%20at%2012.31.52.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.30.png)
+![Database failure test 5](screenshots/Screenshot%202026-10-11%20at%2012.31.58.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.39.png)
+![Database failure test 6](screenshots/Screenshot%202026-10-11%20at%2012.32.14.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.49.png)
+![Database failure test 7](screenshots/Screenshot%202026-10-11%20at%2012.32.21.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.44.56.png)
+![Database failure test 8](screenshots/Screenshot%202026-10-11%20at%2012.32.34.png)
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/6a53c88b8953780e18ab175e5723aa779aef5998/screenshots/Screenshot%202026-10-11%20at%2012.45.06.png)
+![Database failure test 9](screenshots/Screenshot%202026-10-11%20at%2012.32.41.png)
 
-### • Application service status and logs
+</details>
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.52.53.png)
+**Test safety:** Restore the correct parameter immediately after testing and verify that the application can connect to the database again. Avoid leaving invalid credentials in a shared or active environment.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.51.51.png)
+### 6. Auto Scaling Group instance replacement
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.52.11.png)
+These screenshots document instance replacement after an EC2 instance is terminated. This demonstrates recovery through the Auto Scaling Group's desired-capacity configuration; it does not demonstrate scaling in response to increased demand.
 
-![image alt](https://github.com/imed3721/spiderman-mission-control/blob/d1633e54c8139200b1ffa4c2f590ca029d58bd46/screenshots/Screenshot%202026-10-11%20at%2012.52.17.png)
+<details>
+<summary><strong>View instance replacement evidence</strong></summary>
 
-## Limitations and next improvements
+![Instance replacement 1](screenshots/Screenshot%202026-10-11%20at%2012.42.38.png)
 
-### For cost consciousness
-• The documented RDS configuration is Single-AZ, so database
-Multi-AZ failover is not configured. 
+![Instance replacement 2](screenshots/Screenshot%202026-10-11%20at%2012.43.14.png)
 
-• An Auto Scaling Group configured with minimum, desired, and
-maximum capacity of 1 demonstrates instance replacement, not
-load-based horizontal scaling.
+![Instance replacement 3](screenshots/Screenshot%202026-10-11%20at%2012.43.30.png)
 
-• The documented ALB listener uses HTTP. A planned improvement is to add HTTPS with an
-ACM certificate before presenting the app as production-ready.
+![Instance replacement 4](screenshots/Screenshot%202026-10-11%20at%2012.43.37.png)
 
-### My personal choice
+![Instance replacement 5](screenshots/Screenshot%202026-10-11%20at%2012.44.08.png)
 
-• The workflow currently uses long-lived AWS access keys stored in
-GitHub Actions secrets. A planned improvement is to use GitHub Actions
-OIDC with a narrowly scoped IAM role.
+![Instance replacement 6](screenshots/Screenshot%202026-10-11%20at%2012.44.30.png)
 
-• The current documentation and application/test code must use the
-same Systems Manager Parameter Store paths. A planned improvement is to verify that
-server.js, test.js, and the AWS parameters agree before
-relying on the CI/CD result.
+![Instance replacement 7](screenshots/Screenshot%202026-10-11%20at%2012.44.39.png)
 
-## Documentation
+![Instance replacement 8](screenshots/Screenshot%202026-10-11%20at%2012.44.49.png)
 
-• [Source Code](https://github.com/imed3721/spiderman-mission-control)
+![Instance replacement 9](screenshots/Screenshot%202026-10-11%20at%2012.44.56.png)
 
-• [GitHub Actions — CI/CD Workflows](https://github.com/imed3721/spiderman-mission-control/actions)
+![Instance replacement 10](screenshots/Screenshot%202026-10-11%20at%2012.45.06.png)
 
-## What I learned
+</details>
 
-This project strengthened my practical skills in AWS network segmentation, security group design, and managed database connectivity. I also gained hands-on experience with secure application configuration using AWS Systems Manager Parameter Store, automated deployments through GitHub Actions and Systems Manager Run Command, and implementing application health and readiness checks. Additionally, I developed my troubleshooting skills by analysing service logs, investigating database connectivity issues, and diagnosing application failures through load balancer target health.
+### 7. Application service status and logs
+
+These screenshots provide operational evidence for investigating the application service and its logs.
+
+<details>
+<summary><strong>View service status and log evidence</strong></summary>
+
+![Application service evidence 1](screenshots/Screenshot%202026-10-11%20at%2012.52.53.png)
+
+![Application service evidence 2](screenshots/Screenshot%202026-10-11%20at%2012.51.51.png)
+
+![Application service evidence 3](screenshots/Screenshot%202026-10-11%20at%2012.52.11.png)
+
+![Application service evidence 4](screenshots/Screenshot%202026-10-11%20at%2012.52.17.png)
+
+</details>
+
+## Security Considerations
+
+The project applies several security principles:
+
+- **Network segmentation:** Separate public entry points from private application and database resources.
+- **Least privilege:** Restrict security-group rules and IAM permissions to the resources and actions that need them.
+- **Private database:** Disable public access to RDS and allow database connections only from the application security group.
+- **Secrets management:** Store database credentials in Parameter Store as `SecureString` parameters, with appropriate IAM access controls and encryption permissions.
+- **Secure administration:** Use Systems Manager Session Manager instead of exposing SSH to the internet.
+- **CI/CD credentials:** Avoid committing AWS access keys, database passwords, or other secrets to the repository.
+
+The current workflow uses long-lived AWS access keys stored in GitHub Actions secrets. Migrating to GitHub Actions OpenID Connect (OIDC) with a narrowly scoped IAM role would reduce the need for long-lived credentials.
+
+## Limitations and Future Improvements
+
+### High-priority improvements
+
+- **Enable HTTPS:** Configure an HTTPS listener using an AWS Certificate Manager certificate and redirect HTTP traffic to HTTPS.
+- **Adopt GitHub Actions OIDC:** Replace long-lived AWS access keys with short-lived role credentials.
+- **Verify configuration consistency:** Confirm that `server.js`, `test.js`, and the actual Parameter Store paths and parameter names agree.
+- **Improve deployment validation:** Add an HTTP smoke test after deployment and verify that the expected application version is running.
+- **Strengthen observability:** Configure and validate application logs, relevant CloudWatch metrics, and alarms for application and infrastructure failures.
+
+### Availability and scaling improvements
+
+- **Database resilience:** The documented RDS design is Single-AZ. Multi-AZ deployment and failover are not configured in this design.
+- **Horizontal scaling:** An Auto Scaling Group with minimum, desired, and maximum capacity set to `1` demonstrates instance replacement, not load-based horizontal scaling. A future improvement would introduce appropriate capacity settings and scaling policies.
+- **Production readiness:** Add HTTPS, stronger deployment safeguards, and documented recovery procedures before describing the application as production-ready.
+
+### Cost considerations
+
+AWS resources can incur charges even when the application receives little or no traffic. Review the cost of the ALB, EC2, RDS, storage, monitoring, and data transfer. Stop or remove resources when they are no longer needed, while preserving any evidence required for the project.
+
+## What I Learned
+
+This project strengthened my practical understanding of AWS network segmentation, security-group design, managed database connectivity, and secure application configuration.
+
+I gained hands-on experience with automated deployment through GitHub Actions and Systems Manager Run Command, and learned to distinguish application health from dependency readiness.
+
+The failure-testing exercises also helped me investigate database connection problems, analyse service logs, interpret load balancer target health, and understand the difference between instance replacement and demand-based scaling.
+
+Most importantly, the project reinforced that operating a cloud application involves more than getting it deployed: it also requires validating its behaviour, controlling access, monitoring dependencies, and planning for recovery.
+
+## Project Links
+
+- [Source code and README](https://github.com/imed3721/spiderman-mission-control)
+- [GitHub Actions workflows and run history](https://github.com/imed3721/spiderman-mission-control/actions)
